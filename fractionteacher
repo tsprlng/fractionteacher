@@ -164,37 +164,53 @@ assert(Fraction(1,2).simplified() == Fraction(1,2))
 assert(Fraction(23,3).simplified() == Fraction(23,3))
 assert(Fraction(87,9).simplified() == Fraction(29,3))
 
+class FractionChecker:
+	def describe(self, solution):
+		return "as a fraction" if solution.numerator <= solution.denominator else "as a top-heavy fraction"
+
+	def check(self, solution, input):
+		f = try_parse_frac(input)
+		if f:
+			if f == problem.solution().simplified():
+				print("yes, well done")
+				return True
+			if f.simplified() != problem.solution().simplified():
+				print("no")
+			else:
+				print("could be simpler!")
+		else:
+			f = try_calc_expression(input)
+			if not f:
+				print("sorry what??")
+			elif f.simplified() != problem.solution().simplified():
+				print("no")
+			else:
+				print("yes...")
+
+		return False
+
 if __name__ == '__main__':
 	while True:
 		print()
 		problem = choose_problem()
 		if is_friendly(problem.solution().simplified().denominator):
 			# TODO answer_type = random.choice(['decimal','percentage'])
-			answer_type = 'fraction'
+			answer_type = FractionChecker()
 		else:
-			answer_type = 'fraction'
+			answer_type = FractionChecker()
 		bored = False
 		while not bored:
 			print()
-			print(problem.semi_nice_repr(), end=', as a {} please\n'.format(answer_type))
+			print(problem.semi_nice_repr(), end=', {} please\n'.format(answer_type.describe(problem.solution())))
 			print('answer? : ', end='')
 			input = stdin.readline()
+			if not input or input.strip == '':
+				continue
 			if input.strip() == 'b':  # it's a boring problem
 				boring = True
 				break
 			elif input.strip() == 'q':
 				print("BYE")
 				exit()
-			elif answer_type == 'fraction':
-				while True:
-					f = try_parse_frac(input)
-					if f:
-						break
-					print("sorry what?? : ", end='')
-				if f == problem.solution().simplified():
-					print("yes, well done")
-					break
-				elif f.simplified() == problem.solution().simplified():
-					print("could be simpler!")
-				else:
-					print("no")
+			elif answer_type.check(problem.solution(), input):
+				break
