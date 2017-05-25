@@ -126,15 +126,22 @@ def try_calc_expression(strang):
 	if '+' in strang:
 		i = strang.index('+')
 		return Problem(try_calc_expression(strang[:i].strip()), '+', try_calc_expression(strang[i+1:].strip())).solution()
+	elif '*' in strang:
+		i = strang.index('*')
+		return Problem(try_calc_expression(strang[:i].strip()), 'x', try_calc_expression(strang[i+1:].strip())).solution()
 	elif 'x' in strang:
 		i = strang.index('x')
 		return Problem(try_calc_expression(strang[:i].strip()), 'x', try_calc_expression(strang[i+1:].strip())).solution()
 	else:
+		# print("frac {} {}".format(strang.strip(), try_parse_frac(strang.strip())))
 		return try_parse_frac(strang.strip())
 
 # BEGIN SELF TEST
 assert(Problem(Problem(Fraction(1,6), 'x', Fraction(3,2)), '+', Fraction(3,4)).solution() == Fraction(1,1))
 assert(try_calc_expression("1/6 x 3/2 + 1/4") == Fraction(1,2))
+assert(try_calc_expression("4/3 + 5/2") == Fraction(23,6))
+assert(try_calc_expression("4/3 * 7") == Fraction(28,3))
+# assert(try_calc_expression("(4/3) * 7") == Fraction(28,3))  # TODO
 
 def is_friendly(n):  # i.e. is this a denominator it's currently reasonable to ask for as a decimal?
 	# factorized = factorize(n)
@@ -166,15 +173,21 @@ assert(Fraction(87,9).simplified() == Fraction(29,3))
 
 class FractionChecker:
 	def describe(self, solution):
-		return "as a fraction" if solution.numerator <= solution.denominator else "as a top-heavy fraction"
+		return "as a fraction"
+
+	def answer(self, solution):
+		return str(solution.simplified())
 
 	def check(self, solution, input):
 		f = try_parse_frac(input)
 		if f:
 			if f == problem.solution().simplified():
-				print("yes, well done")
-				return True
-			if f.simplified() != problem.solution().simplified():
+				if self.is_good_format(solution, input):
+					print("yes, well done")
+					return True
+				else:
+					print("{} please!!".format(self.describe(solution)))
+			elif f.simplified() != problem.solution().simplified():
 				print("no")
 			else:
 				print("could be simpler!")
@@ -189,25 +202,54 @@ class FractionChecker:
 
 		return False
 
+class TopHeavyFractionChecker(FractionChecker):
+	def describe(self, solution):
+		return "as a fraction" if solution.numerator <= solution.denominator else "as a top-heavy fraction"
+
+	def is_good_format(self, solution, input):
+		return re.match("\\d+/\\d+$", input.strip()) or solution.numerator % solution.denominator == 0
+
+class MixedNumberChecker(FractionChecker):
+	def describe(self, solution):
+		return "as a fraction" if solution.numerator < solution.denominator else "as a mixed number"
+
+	def is_good_format(self, solution, input):
+		m = re.match("\\d+ (\\d+)/(\\d+$)", input.strip())
+		if m and int(m.group(1)) < int(m.group(2)):
+			return True
+		return solution.numerator <= solution.denominator or solution.numerator % solution.denominator == 0
+
+# BEGIN SELF TEST
+assert(not TopHeavyFractionChecker().is_good_format(Fraction(15,4),"2 7/4"))
+assert(not TopHeavyFractionChecker().is_good_format(Fraction(15,4),"3 3/4"))
+assert(TopHeavyFractionChecker().is_good_format(Fraction(15,4),"15/4"))
+assert(TopHeavyFractionChecker().is_good_format(Fraction(15,5),"3"))
+assert(TopHeavyFractionChecker().is_good_format(Fraction(3,5),"3/5"))
+assert(not MixedNumberChecker().is_good_format(Fraction(15,4),"2 7/4"))
+assert(not MixedNumberChecker().is_good_format(Fraction(15,4),"15/4"))
+assert(MixedNumberChecker().is_good_format(Fraction(15,4),"3 3/4"))
+assert(MixedNumberChecker().is_good_format(Fraction(15,5),"3"))
+assert(MixedNumberChecker().is_good_format(Fraction(3,5),"3/5"))
+assert(MixedNumberChecker().is_good_format(Fraction(3,5),"0 3/5"))
+
 if __name__ == '__main__':
 	while True:
 		print()
 		problem = choose_problem()
 		if is_friendly(problem.solution().simplified().denominator):
 			# TODO answer_type = random.choice(['decimal','percentage'])
-			answer_type = FractionChecker()
+			answer_type = random.choice([TopHeavyFractionChecker, MixedNumberChecker])()
 		else:
-			answer_type = FractionChecker()
-		bored = False
-		while not bored:
+			answer_type = random.choice([TopHeavyFractionChecker, MixedNumberChecker])()
+		while True:
 			print()
-			print(problem.semi_nice_repr(), end=', {} please\n'.format(answer_type.describe(problem.solution())))
+			print(problem.semi_nice_repr(), end=', {} please\n'.format(answer_type.describe(problem.solution()), answer_type.answer(problem.solution())))
 			print('answer? : ', end='')
 			input = stdin.readline()
 			if not input or input.strip == '':
 				continue
 			if input.strip() == 'b':  # it's a boring problem
-				boring = True
+				print("it was {}".format(answer_type.answer(problem.solution())))
 				break
 			elif input.strip() == 'q':
 				print("BYE")
