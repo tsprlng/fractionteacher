@@ -171,7 +171,7 @@ assert(Fraction(1,2).simplified() == Fraction(1,2))
 assert(Fraction(23,3).simplified() == Fraction(23,3))
 assert(Fraction(87,9).simplified() == Fraction(29,3))
 
-class FractionChecker:
+class FractionChecker(object):
 	def describe(self, solution):
 		return "as a fraction"
 
@@ -213,11 +213,43 @@ class MixedNumberChecker(FractionChecker):
 	def describe(self, solution):
 		return "as a fraction" if solution.numerator < solution.denominator else "as a mixed number"
 
+	def answer(self, solution):
+		return solution.nice_repr()
+
 	def is_good_format(self, solution, input):
 		m = re.match("\\d+ (\\d+)/(\\d+$)", input.strip())
 		if m and int(m.group(1)) < int(m.group(2)):
 			return True
 		return solution.numerator <= solution.denominator or solution.numerator % solution.denominator == 0
+
+class DecimalChecker(FractionChecker):  # lolz
+	def describe(self, solution):
+		accurate = float(solution.numerator) / float(solution.denominator)
+		if accurate != round(accurate, 5):
+			return "as a decimal (to 5 decimal places)"
+		return "as a decimal"
+	
+	def answer(self, solution):
+		accurate = float(solution.numerator) / float(solution.denominator)
+		return str(round(accurate, 5))
+
+	def is_good_format(self, solution, input):
+		try:
+			f = float(input)
+			return True
+		except ValueError:
+			return False
+	
+	def check(self, solution, input):
+		try:
+			accurate = float(solution.numerator) / float(solution.denominator)
+			f = float(input)
+			if f == round(accurate, 5):
+				print("yes, well done")
+				return True
+		except ValueError:
+			pass
+		return super(DecimalChecker, self).check(solution, input)
 
 # BEGIN SELF TEST
 assert(not TopHeavyFractionChecker().is_good_format(Fraction(15,4),"2 7/4"))
@@ -238,7 +270,7 @@ if __name__ == '__main__':
 		problem = choose_problem()
 		if is_friendly(problem.solution().simplified().denominator):
 			# TODO answer_type = random.choice(['decimal','percentage'])
-			answer_type = random.choice([TopHeavyFractionChecker, MixedNumberChecker])()
+			answer_type = random.choice([DecimalChecker])()
 		else:
 			answer_type = random.choice([TopHeavyFractionChecker, MixedNumberChecker])()
 		while True:
